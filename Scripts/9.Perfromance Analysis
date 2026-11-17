@@ -1,1 +1,40 @@
+--performance Analysis:
+--comparing the current value to a target value.
+--helps measure success and compare perfromance
+--formula-cuurent[measure]-target[Measure]
+--current sales-avegare sales
+--current year sales- previous year sales-Yoy analysis
+--current sa;es -lowest sales
+--   Current  targetAVG  perfromance
+--A  200      200           0 - performance is avg
+--B  300      200          100 - is good 
+--C  100      200          -100 --belowe the avg so not good
 
+--here we used window function to check performnace analysis-lead,lag
+
+--Analyze the Yearly Performance of products by comparing each products sales to both its averge sales perfromance 
+--and the previous years sales.
+with yearly_Product_sales as(
+select year(f.order_date) Saleyear,
+p.product_name ,
+sum(sales_amount) totalSales,avg(sales_amount) avgSales from gold.fact_sales f left join gold.dim_products p
+on f.product_key=p.product_key
+where order_date is not null
+group by year(f.order_date),p.product_name)
+
+select Saleyear,product_name,totalSales,
+avg(totalSales) over(partition by product_name) avgSales,
+totalSales-avg(totalSales) over(partition by product_name) as diff_avg,
+case when totalSales-avg(totalSales) over(partition by product_name) > 0 then 'above avg'
+     when totalSales-avg(totalSales) over(partition by product_name) < 0 then 'below avg'
+     else 'avg'
+end avg_change,
+lag(totalSales) over(partition by product_name order by Saleyear) previous_year_sale,
+
+totalSales-lag(totalSales) over(partition by product_name order by Saleyear) as diff_py,
+case when totalSales-lag(totalSales) over(partition by product_name order by Saleyear) > 0 then 'increase'
+     when totalSales-lag(totalSales) over(partition by product_name order by Saleyear) < 0 then 'descrese'
+     else 'No change'
+end as previous_change
+from yearly_Product_sales
+order by product_name , Saleyear
